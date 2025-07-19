@@ -1,78 +1,130 @@
 # My Work Environment Scripts
 
-This directory contains utility scripts for quickly setting up new projects.
+This directory contains utility scripts for quickly setting up new projects with customizable options.
 
 ## Scripts
 
 ### 1. create-go-project.sh
-Creates a new Go project with a standard directory structure.
+Creates a new Go project with customizable structure and project types.
 
 **Features:**
-- Creates organized folder structure (cmd, pkg, internal)
-- Initializes Go module
-- Creates basic main.go file
-- Generates README.md
-- Comprehensive .gitignore for Go projects
-- Git repository initialization with initial commit
+- Multiple project types (basic, cli, api, lib, minimal)
+- Automatic dependency installation for CLI and API projects
+- Go module initialization
+- Comprehensive .gitignore
+- Makefile for common tasks
+- Git repository initialization
 - Projects created in ~/Documents/Go_projects/
 
 **Usage:**
 ```bash
-# Option 1: Interactive
+# Interactive mode
 go_project
-# Enter project name when prompted
 
-# Option 2: With project name
+# With project name
 go_project myproject
+
+# With specific type
+go_project mycli --type cli
+go_project myapi --type api
+go_project mylib --type lib
+
+# Skip git initialization
+go_project myproject --no-git
+
+# Show help
+go_project --help
 ```
 
+**Project Types:**
+- `basic` (default): Standard layout with cmd/, pkg/, internal/
+- `cli`: CLI application with Cobra framework
+- `api`: REST API with Chi router
+- `lib`: Go library (no cmd directory)
+- `minimal`: Single main.go file
+
 ### 2. create-nextjs-project.sh
-Creates a new Next.js project with predefined settings.
+Creates a new Next.js project with extensive customization options.
 
 **Features:**
-- TypeScript enabled
-- Tailwind CSS configured
-- App Router structure
-- ESLint enabled
-- Turbopack enabled for faster development
-- Bun package manager (faster than npm)
-- Enhanced .gitignore with additional entries
-- Git repository initialization with initial commit
+- Configurable TypeScript, ESLint, Tailwind CSS, Turbopack
+- Choice of package managers (bun, npm, yarn, pnpm)
+- App Router or Pages Router
+- Enhanced .gitignore
+- Git repository initialization
 - Projects created in ~/Documents/Next-js/
 
 **Usage:**
 ```bash
-# Option 1: Interactive
+# Interactive mode
 next
-# Enter project name when prompted
 
-# Option 2: With project name
+# With project name
 next myproject
+
+# Custom configurations
+next myproject --no-turbo --npm
+next myproject --pages --no-eslint
+next myproject --no-typescript --yarn
+next myproject --no-tailwind --no-git
+
+# Show help
+next --help
 ```
 
+**Options:**
+- `--no-turbo`: Disable Turbopack
+- `--no-eslint`: Disable ESLint
+- `--no-tailwind`: Disable Tailwind CSS
+- `--pages`: Use Pages Router instead of App Router
+- `--npm/--yarn/--pnpm`: Choose package manager (default: bun)
+- `--no-typescript`: Use JavaScript instead of TypeScript
+- `--no-git`: Skip git initialization
+
 ### 3. create-python-project.sh
-Creates a new Python project with conda environment and standard structure.
+Creates Python projects with different templates and configurations.
 
 **Features:**
-- Creates dedicated conda environment for each project
-- Python 3.11 by default
-- Standard project structure (src, tests, data, notebooks)
-- Pre-configured requirements.txt with common packages
-- Comprehensive .gitignore for Python projects
-- README with environment activation instructions
-- Sample test file with pytest setup
-- Git repository initialization with initial commit
+- Multiple project types (basic, ml, web, data, library, research)
+- Conda or venv environment support
+- Python version selection
+- Type-specific dependencies and structure
+- Comprehensive .gitignore
+- Git repository initialization
 - Projects created in ~/Documents/Python_projects/
 
 **Usage:**
 ```bash
-# Option 1: Interactive
+# Interactive mode
 python_project
-# Enter project name when prompted
 
-# Option 2: With project name
+# With project name
 python_project myproject
+
+# Specific project types
+python_project myml --type ml --python 3.10
+python_project myweb --type web
+python_project mylib --type library --no-conda
+python_project mydata --type data
+python_project myresearch --type research
+
+# Show help
+python_project --help
 ```
+
+**Project Types:**
+- `basic` (default): Standard Python project with numpy, pandas, pytest
+- `ml`: Machine Learning with TensorFlow/PyTorch, scikit-learn, MLflow
+- `web`: Web application with FastAPI, SQLAlchemy, uvicorn
+- `data`: Data analysis with pandas, matplotlib, plotly, Jupyter
+- `library`: Python package with setuptools, sphinx, build tools
+- `research`: Research project with scipy, sympy, Jupyter
+
+**Options:**
+- `--type TYPE`: Choose project type
+- `--python VERSION`: Python version (default: 3.11)
+- `--no-conda`: Use venv instead of conda
+- `--no-git`: Skip git initialization
 
 ## Installation
 
@@ -127,25 +179,98 @@ function python_project { & "$HOME\My_workenv\create-python-project.ps1" }
 ## Prerequisites
 
 ### For Go Projects:
-- Go installed (`brew install go` on macOS or download from https://golang.org)
+- Go 1.21 or higher (`brew install go` on macOS or download from https://golang.org)
 
 ### For Next.js Projects:
-- Node.js installed (https://nodejs.org)
-- Bun installed (optional but recommended): 
-  ```bash
-  curl -fsSL https://bun.sh/install | bash
-  ```
-  If Bun is not installed, the script will fall back to npm.
+- Node.js 18+ (https://nodejs.org)
+- Package managers (optional):
+  - Bun (recommended): `curl -fsSL https://bun.sh/install | bash`
+  - Yarn: `npm install -g yarn`
+  - PNPM: `npm install -g pnpm`
 
 ### For Python Projects:
-- Miniconda or Anaconda installed
+- For conda environments:
+  - Miniconda or Anaconda
   - macOS: `brew install --cask miniconda`
-  - Or download from https://docs.conda.io/en/latest/miniconda.html
+  - Download from https://docs.conda.io/en/latest/miniconda.html
+- For venv:
+  - Python 3.8+ with venv module
+
+## Directory Structure
+
+All projects are organized in dedicated directories:
+- Go projects: `~/Documents/Go_projects/`
+- Next.js projects: `~/Documents/Next-js/`
+- Python projects: `~/Documents/Python_projects/`
+
+## Advanced Usage Examples
+
+### Go Projects
+```bash
+# Create a REST API with Chi router
+go_project taskapi --type api
+
+# Create a CLI tool with Cobra
+go_project devtool --type cli
+
+# Create a Go library
+go_project utils --type lib --no-git
+```
+
+### Next.js Projects
+```bash
+# Create a minimal Next.js app without extra features
+next simple-app --no-turbo --no-eslint --no-tailwind
+
+# Create a Pages Router app with npm
+next legacy-app --pages --npm
+
+# Create a JavaScript project with Yarn
+next js-app --no-typescript --yarn
+```
+
+### Python Projects
+```bash
+# Create an ML project with Python 3.10
+python_project mlmodel --type ml --python 3.10
+
+# Create a FastAPI web service with venv
+python_project webservice --type web --no-conda
+
+# Create a data analysis project
+python_project analysis --type data
+
+# Create a Python library package
+python_project mypackage --type library
+```
+
+## Features Common to All Scripts
+
+1. **Interactive and CLI modes**: Use with or without arguments
+2. **Git initialization**: Automatic git repo setup with initial commit
+3. **Comprehensive .gitignore**: Language-specific ignore patterns
+4. **Project documentation**: Auto-generated README with instructions
+5. **Help command**: Use `-h` or `--help` for detailed options
 
 ## Customization
 
-Feel free to modify these scripts to match your preferences:
-- Change default project structures
-- Add or remove boilerplate files
-- Modify package manager settings
-- Add additional setup steps
+You can modify these scripts to:
+- Change default settings
+- Add new project types
+- Modify directory structures
+- Add custom boilerplate code
+- Include additional tools or frameworks
+- Change default package managers or versions
+
+## Contributing
+
+Feel free to fork and modify these scripts for your own needs. Some ideas for extensions:
+- Add Docker support with Dockerfile generation
+- Include CI/CD configuration files
+- Add database setup for web projects
+- Include testing frameworks setup
+- Add linting and formatting configurations
+
+## License
+
+These scripts are provided as-is for personal use. Feel free to modify and distribute as needed.
