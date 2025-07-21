@@ -82,16 +82,21 @@ next --help
 - `--no-git`: Skip git initialization
 
 ### 3. create-python-project.sh
-Creates Python projects with different templates and configurations.
+Creates Python projects using Poetry for modern dependency management.
 
 **Features:**
 - Multiple project types (basic, ml, web, data, library, research)
-- Conda or venv environment support
+- Poetry-based dependency management and virtual environments
 - Python version selection
 - Type-specific dependencies and structure
 - Comprehensive .gitignore
 - Git repository initialization
+- Automatic pyproject.toml configuration with tool settings
+- Built-in support for black, flake8, mypy, pytest
 - Projects created in ~/Documents/Python_projects/
+
+**Prerequisites:**
+- Poetry must be installed (see Prerequisites section above)
 
 **Usage:**
 ```bash
@@ -104,7 +109,7 @@ python_project myproject
 # Specific project types
 python_project myml --type ml --python 3.10
 python_project myweb --type web
-python_project mylib --type library --no-conda
+python_project mylib --type library
 python_project mydata --type data
 python_project myresearch --type research
 
@@ -117,14 +122,39 @@ python_project --help
 - `ml`: Machine Learning with TensorFlow/PyTorch, scikit-learn, MLflow
 - `web`: Web application with FastAPI, SQLAlchemy, uvicorn
 - `data`: Data analysis with pandas, matplotlib, plotly, Jupyter
-- `library`: Python package with setuptools, sphinx, build tools
+- `library`: Python package ready for PyPI publishing
 - `research`: Research project with scipy, sympy, Jupyter
 
 **Options:**
 - `--type TYPE`: Choose project type
 - `--python VERSION`: Python version (default: 3.11)
-- `--no-conda`: Use venv instead of conda
 - `--no-git`: Skip git initialization
+
+**Poetry Commands:**
+```bash
+# Install dependencies
+poetry install
+
+# Add dependencies
+poetry add numpy pandas
+poetry add --group dev pytest black
+
+# Activate environment
+poetry shell
+
+# Run commands
+poetry run python src/main.py
+poetry run pytest
+
+# Build/publish (libraries)
+poetry build
+poetry publish
+```
+
+**Windows Notes:**
+- The bash script works in Git Bash or WSL
+- Poetry commands work the same across all platforms
+- Use forward slashes in Git Bash, backslashes in Windows CMD/PowerShell
 
 ### 4. clone-git-project.sh
 Clones git repositories into language-specific directories with automatic language detection.
@@ -265,9 +295,18 @@ function python_project { & "$HOME\My_workenv\create-python-project.ps1" }
   - PNPM: `npm install -g pnpm`
 
 ### For Python Projects:
-- For conda environments:
-  - Miniconda or Anaconda
-  - macOS: `brew install --cask miniconda`
+- Python 3.8 or higher (https://python.org)
+- Poetry (required):
+  ```bash
+  # macOS/Linux:
+  curl -sSL https://install.python-poetry.org | python3 -
+  
+  # Windows (PowerShell):
+  (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | py -
+  
+  # Windows (Git Bash):
+  curl -sSL https://install.python-poetry.org | python -
+  ```
   - Download from https://docs.conda.io/en/latest/miniconda.html
 - For venv:
   - Python 3.8+ with venv module
@@ -311,14 +350,21 @@ next js-app --no-typescript --yarn
 # Create an ML project with Python 3.10
 python_project mlmodel --type ml --python 3.10
 
-# Create a FastAPI web service with venv
-python_project webservice --type web --no-conda
+# Create a FastAPI web service
+python_project webservice --type web
 
 # Create a data analysis project
 python_project analysis --type data
 
-# Create a Python library package
+# Create a Python library package ready for PyPI
 python_project mypackage --type library
+
+# Work with Poetry after project creation
+cd ~/Documents/Python_projects/myproject
+poetry shell  # Activate environment
+poetry add requests  # Add dependency
+poetry run pytest  # Run tests
+poetry build  # Build package
 ```
 
 ### Clone Projects

@@ -1,9 +1,15 @@
 #!/bin/bash
 
+# Detect OS for cross-platform compatibility
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then
+    IS_WINDOWS=true
+else
+    IS_WINDOWS=false
+fi
+
 # Default values
 PROJECT_TYPE="basic"
 PYTHON_VERSION="3.11"
-USE_CONDA=true
 SKIP_GIT=false
 PROJECT_NAME=""
 
@@ -27,14 +33,13 @@ OPTIONS:
     --python VERSION    Python version (default: 3.11)
                         Examples: 3.10, 3.11, 3.12
     
-    --no-conda          Use venv instead of conda
     --no-git            Skip git initialization
     -h, --help          Show this help message
 
 EXAMPLES:
     python_project myproject                    # Basic project with defaults
     python_project myml --type ml --python 3.10 # ML project with Python 3.10
-    python_project mylib --type library --no-conda  # Library with venv
+    python_project mylib --type library         # Library project
 
 Project types include different dependencies and structures:
 - basic: numpy, pandas, pytest, black, flake8, mypy
@@ -60,10 +65,6 @@ while [[ $# -gt 0 ]]; do
         --python)
             PYTHON_VERSION="$2"
             shift 2
-            ;;
-        --no-conda)
-            USE_CONDA=false
-            shift
             ;;
         --no-git)
             SKIP_GIT=true
@@ -100,17 +101,40 @@ if [ -z "$PROJECT_NAME" ]; then
     read PROJECT_NAME
 fi
 
+# Check if Poetry is installed
+if ! command -v poetry &> /dev/null; then
+    echo "Error: Poetry is not installed."
+    echo "Please install Poetry by running:"
+    if [ "$IS_WINDOWS" = true ]; then
+        echo "  (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | py -"
+        echo "  OR"
+        echo "  curl -sSL https://install.python-poetry.org | python -"
+    else
+        echo "  curl -sSL https://install.python-poetry.org | python3 -"
+    fi
+    echo "Or visit: https://python-poetry.org/docs/#installation"
+    exit 1
+fi
+
 # Show selected configuration
 echo "Creating Python project with the following configuration:"
 echo "  Project name: $PROJECT_NAME"
 echo "  Project type: $PROJECT_TYPE"
 echo "  Python version: $PYTHON_VERSION"
-echo "  Environment: $([ "$USE_CONDA" = true ] && echo "conda" || echo "venv")"
+echo "  Package manager: Poetry"
 echo "  Git initialization: $([ "$SKIP_GIT" = false ] && echo "Yes" || echo "No")"
 echo ""
 
 # Create the directory path
-python_dir="$HOME/Documents/Python_projects"
+if [ "$IS_WINDOWS" = true ]; then
+    # Windows path
+    python_dir="$USERPROFILE/Documents/Python_projects"
+    # Convert Windows path for use in bash
+    python_dir=$(cygpath -u "$python_dir" 2>/dev/null || echo "$python_dir")
+else
+    # Unix-like systems
+    python_dir="$HOME/Documents/Python_projects"
+fi
 mkdir -p "$python_dir"
 
 # Navigate to the Python projects directory
@@ -120,13 +144,24 @@ cd "$python_dir"
 mkdir -p "$PROJECT_NAME"
 cd "$PROJECT_NAME"
 
-# Create environment based on choice
-if [ "$USE_CONDA" = true ]; then
-    echo "Creating conda environment '$PROJECT_NAME'..."
-    conda create -n "$PROJECT_NAME" python=$PYTHON_VERSION -y
+# Initialize Poetry project
+echo "Initializing Poetry project..."
+poetry init --no-interaction --name "$PROJECT_NAME" --python "^$PYTHON_VERSION"
+
+# Configure Poetry to create virtual environment in project directory (optional)
+# poetry config virtualenvs.in-project true
+
+# Install Python version if needed and create virtual environment
+echo "Setting up Python $PYTHON_VERSION environment..."
+if [ "$IS_WINDOWS" = true ]; then
+    # Try python launcher first, then python.exe
+    if command -v py &> /dev/null; then
+        poetry env use py -$PYTHON_VERSION
+    else
+        poetry env use python$PYTHON_VERSION
+    fi
 else
-    echo "Creating virtual environment..."
-    python$PYTHON_VERSION -m venv venv
+    poetry env use python$PYTHON_VERSION
 fi
 
 # Create project structure based on type
@@ -229,249 +264,148 @@ esac
 touch src/__init__.py 2>/dev/null
 touch tests/__init__.py
 
-# Create requirements.txt based on project type
+# Add dependencies based on project type using Poetry
 case $PROJECT_TYPE in
     basic)
-        cat <<EOF > requirements.txt
-# Core dependencies
-numpy>=1.24.0
-pandas>=2.0.0
-
-# Development dependencies
-pytest>=7.0.0
-pytest-cov>=4.0.0
-black>=23.0.0
-flake8>=6.0.0
-mypy>=1.0.0
-ipython>=8.0.0
-
-# Add your project-specific dependencies below
-EOF
+        echo "Adding basic project dependencies..."
+        # Core dependencies
+        poetry add numpy pandas
+        # Development dependencies
+        poetry add --group dev pytest pytest-cov black flake8 mypy ipython
         ;;
     ml)
-        cat <<EOF > requirements.txt
-# Core ML dependencies
-numpy>=1.24.0
-pandas>=2.0.0
-scikit-learn>=1.3.0
-matplotlib>=3.7.0
-seaborn>=0.12.0
-jupyter>=1.0.0
-jupyterlab>=4.0.0
-
-# Deep Learning (choose one or both)
-tensorflow>=2.13.0
-# torch>=2.0.0
-# torchvision>=0.15.0
-
-# ML utilities
-mlflow>=2.0.0
-optuna>=3.0.0
-xgboost>=1.7.0
-lightgbm>=4.0.0
-
-# Development dependencies
-pytest>=7.0.0
-black>=23.0.0
-flake8>=6.0.0
-mypy>=1.0.0
-
-# Add your project-specific dependencies below
-EOF
+        echo "Adding ML project dependencies..."
+        # Core ML dependencies
+        poetry add numpy pandas scikit-learn matplotlib seaborn jupyter jupyterlab
+        # ML utilities
+        poetry add mlflow optuna xgboost lightgbm
+        # Deep Learning - TensorFlow by default (can be changed to PyTorch)
+        poetry add tensorflow
+        # Development dependencies
+        poetry add --group dev pytest black flake8 mypy
         ;;
     web)
-        cat <<EOF > requirements.txt
-# Web framework
-fastapi>=0.100.0
-uvicorn[standard]>=0.23.0
-pydantic>=2.0.0
-python-multipart>=0.0.6
-
-# Database
-sqlalchemy>=2.0.0
-alembic>=1.11.0
-asyncpg>=0.28.0  # For PostgreSQL
-# pymongo>=4.4.0  # For MongoDB
-
-# API utilities
-httpx>=0.24.0
-python-jose[cryptography]>=3.3.0
-passlib[bcrypt]>=1.7.4
-python-dotenv>=1.0.0
-
-# Development dependencies
-pytest>=7.0.0
-pytest-asyncio>=0.21.0
-black>=23.0.0
-flake8>=6.0.0
-mypy>=1.0.0
-
-# Add your project-specific dependencies below
-EOF
+        echo "Adding web project dependencies..."
+        # Web framework
+        poetry add fastapi "uvicorn[standard]" pydantic python-multipart
+        # Database
+        poetry add sqlalchemy alembic asyncpg
+        # API utilities
+        poetry add httpx "python-jose[cryptography]" "passlib[bcrypt]" python-dotenv
+        # Development dependencies
+        poetry add --group dev pytest pytest-asyncio black flake8 mypy
         ;;
     data)
-        cat <<EOF > requirements.txt
-# Data analysis dependencies
-numpy>=1.24.0
-pandas>=2.0.0
-matplotlib>=3.7.0
-seaborn>=0.12.0
-plotly>=5.15.0
-scipy>=1.11.0
-statsmodels>=0.14.0
-
-# Data processing
-openpyxl>=3.1.0
-xlrd>=2.0.0
-pyarrow>=12.0.0
-
-# Jupyter
-jupyter>=1.0.0
-jupyterlab>=4.0.0
-ipywidgets>=8.0.0
-
-# Development dependencies
-pytest>=7.0.0
-black>=23.0.0
-flake8>=6.0.0
-mypy>=1.0.0
-
-# Add your project-specific dependencies below
-EOF
+        echo "Adding data analysis project dependencies..."
+        # Data analysis dependencies
+        poetry add numpy pandas matplotlib seaborn plotly scipy statsmodels
+        # Data processing
+        poetry add openpyxl xlrd pyarrow
+        # Jupyter
+        poetry add jupyter jupyterlab ipywidgets
+        # Development dependencies
+        poetry add --group dev pytest black flake8 mypy
         ;;
     library)
-        cat <<EOF > requirements.txt
-# Core dependencies (minimal for a library)
-# Add only what your library needs
-
-# Development dependencies
-pytest>=7.0.0
-pytest-cov>=4.0.0
-black>=23.0.0
-flake8>=6.0.0
-mypy>=1.0.0
-sphinx>=7.0.0
-sphinx-rtd-theme>=1.3.0
-
-# Build tools
-build>=0.10.0
-twine>=4.0.0
-setuptools>=68.0.0
-wheel>=0.41.0
-
-# Add your library dependencies below
-EOF
+        echo "Adding library project dependencies..."
+        # Development dependencies only (libraries should have minimal runtime deps)
+        poetry add --group dev pytest pytest-cov black flake8 mypy sphinx sphinx-rtd-theme
+        # Build tools are handled by Poetry itself
         ;;
     research)
-        cat <<EOF > requirements.txt
-# Scientific computing
-numpy>=1.24.0
-scipy>=1.11.0
-sympy>=1.12
-matplotlib>=3.7.0
-seaborn>=0.12.0
-
-# Data handling
-pandas>=2.0.0
-h5py>=3.9.0
-netCDF4>=1.6.0
-
-# Jupyter
-jupyter>=1.0.0
-jupyterlab>=4.0.0
-ipywidgets>=8.0.0
-notebook>=7.0.0
-
-# Plotting and visualization
-plotly>=5.15.0
-bokeh>=3.2.0
-
-# Development dependencies
-pytest>=7.0.0
-black>=23.0.0
-flake8>=6.0.0
-mypy>=1.0.0
-
-# Add your research-specific dependencies below
-EOF
+        echo "Adding research project dependencies..."
+        # Scientific computing
+        poetry add numpy scipy sympy matplotlib seaborn
+        # Data handling
+        poetry add pandas h5py netCDF4
+        # Jupyter
+        poetry add jupyter jupyterlab ipywidgets notebook
+        # Plotting and visualization
+        poetry add plotly bokeh
+        # Development dependencies
+        poetry add --group dev pytest black flake8 mypy
         ;;
 esac
 
-# Create appropriate additional files based on project type
-if [ "$PROJECT_TYPE" = "library" ]; then
-    # Create setup.py for library projects
-    cat <<EOF > setup.py
-from setuptools import setup, find_packages
+# Update pyproject.toml with additional configurations
+echo "Configuring pyproject.toml..."
 
-with open("README.md", "r", encoding="utf-8") as fh:
-    long_description = fh.read()
+# Add common tool configurations
+cat <<EOF >> pyproject.toml
 
-setup(
-    name="$PROJECT_NAME",
-    version="0.1.0",
-    author="Your Name",
-    author_email="your.email@example.com",
-    description="A short description of your project",
-    long_description=long_description,
-    long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/$PROJECT_NAME",
-    package_dir={"": "src"},
-    packages=find_packages(where="src"),
-    classifiers=[
-        "Development Status :: 3 - Alpha",
-        "Intended Audience :: Developers",
-        "Topic :: Software Development :: Libraries :: Python Modules",
-        "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.11",
-    ],
-    python_requires=">=3.8",
-    install_requires=[
-        # Add your dependencies here
-    ],
-)
+[tool.black]
+line-length = 88
+target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+
+[tool.mypy]
+python_version = "$PYTHON_VERSION"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["*/tests/*", "*/test_*.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
 EOF
 
-    # Create pyproject.toml
-    cat <<EOF > pyproject.toml
-[build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
-[project]
+# Add library-specific configurations
+if [ "$PROJECT_TYPE" = "library" ]; then
+    # Update pyproject.toml for library projects
+    poetry config repositories.testpypi https://test.pypi.org/legacy/
+    
+    # Add package configuration
+    cat <<EOF > temp_pyproject.toml
+[tool.poetry]
 name = "$PROJECT_NAME"
 version = "0.1.0"
 description = "A short description of your project"
+authors = ["Your Name <your.email@example.com>"]
 readme = "README.md"
-requires-python = ">=3.8"
-license = {text = "MIT"}
-authors = [
-    {name = "Your Name", email = "your.email@example.com"},
-]
+license = "MIT"
+homepage = "https://github.com/yourusername/$PROJECT_NAME"
+repository = "https://github.com/yourusername/$PROJECT_NAME"
+keywords = ["python", "library"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
+packages = [{include = "$PROJECT_NAME", from = "src"}]
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.poetry.dependencies]
+python = "^$PYTHON_VERSION"
 
-[tool.black]
-line-length = 88
-target-version = ['py38', 'py39', 'py310', 'py311']
-
-[tool.mypy]
-python_version = "3.8"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
+[tool.poetry.group.dev.dependencies]
 EOF
+    
+    # Merge with existing pyproject.toml
+    mv pyproject.toml pyproject_old.toml
+    cat temp_pyproject.toml > pyproject.toml
+    grep -A 1000 "\[tool.poetry.group.dev.dependencies\]" pyproject_old.toml | tail -n +2 >> pyproject.toml
+    cat pyproject_old.toml | grep -A 1000 "\[tool.black\]" >> pyproject.toml
+    rm temp_pyproject.toml pyproject_old.toml
 fi
 
 # Create .gitignore
@@ -663,47 +597,48 @@ cat <<EOF > README.md
 
 EOF
 
-if [ "$USE_CONDA" = true ]; then
-    cat <<EOF >> README.md
-This project uses a conda environment named \`$PROJECT_NAME\`.
+cat <<EOF >> README.md
+This project uses Poetry for dependency management.
 
-To activate the environment:
+To activate the Poetry shell (virtual environment):
 \`\`\`bash
-conda activate $PROJECT_NAME
+poetry shell
 \`\`\`
 
-To deactivate the environment:
+Alternatively, you can run commands within the Poetry environment:
 \`\`\`bash
-conda deactivate
-\`\`\`
-EOF
-else
-    cat <<EOF >> README.md
-This project uses a Python virtual environment.
-
-To activate the environment:
-\`\`\`bash
-# On macOS/Linux:
-source venv/bin/activate
-
-# On Windows:
-venv\\Scripts\\activate
+poetry run python src/main.py
+poetry run pytest
 \`\`\`
 
-To deactivate the environment:
+On Windows, you can also use:
+\`\`\`powershell
+poetry run python src\\main.py
+poetry run pytest
+\`\`\`
+
+To deactivate the Poetry shell:
 \`\`\`bash
-deactivate
+exit
 \`\`\`
 EOF
-fi
 
 cat <<EOF >> README.md
 
 ### 2. Install Dependencies
 
-After activating the environment, install the required packages:
+Poetry manages dependencies automatically. To install all dependencies:
 \`\`\`bash
-pip install -r requirements.txt
+poetry install
+\`\`\`
+
+To add new dependencies:
+\`\`\`bash
+# Add a runtime dependency
+poetry add package-name
+
+# Add a development dependency
+poetry add --group dev package-name
 \`\`\`
 
 ### 3. Project Structure
@@ -723,7 +658,7 @@ case $PROJECT_TYPE in
 │   └── __init__.py
 ├── data/             # Data files (gitignored)
 ├── notebooks/        # Jupyter notebooks
-├── requirements.txt  # Project dependencies
+├── pyproject.toml    # Project configuration and dependencies
 ├── README.md         # This file
 └── .gitignore       # Git ignore rules
 EOF
@@ -739,7 +674,7 @@ EOF
 ├── notebooks/        # Jupyter notebooks
 ├── models/           # Saved models (gitignored)
 ├── experiments/      # Experiment tracking
-├── requirements.txt  # Project dependencies
+├── pyproject.toml    # Project configuration and dependencies
 ├── README.md         # This file
 └── .gitignore       # Git ignore rules
 EOF
@@ -753,7 +688,7 @@ EOF
 ├── tests/            # Test files
 ├── static/           # Static files
 ├── templates/        # HTML templates
-├── requirements.txt  # Project dependencies
+├── pyproject.toml    # Project configuration and dependencies
 ├── README.md         # This file
 └── .gitignore       # Git ignore rules
 EOF
@@ -768,7 +703,7 @@ EOF
 ├── notebooks/        # Jupyter notebooks
 ├── reports/          # Generated reports
 ├── visualizations/   # Generated plots
-├── requirements.txt  # Project dependencies
+├── pyproject.toml    # Project configuration and dependencies
 ├── README.md         # This file
 └── .gitignore       # Git ignore rules
 EOF
@@ -782,9 +717,7 @@ EOF
 ├── tests/                 # Test files
 ├── docs/                  # Documentation
 ├── examples/              # Example usage
-├── setup.py              # Package setup
-├── pyproject.toml        # Build configuration
-├── requirements.txt      # Dependencies
+├── pyproject.toml        # Project configuration and dependencies
 ├── README.md             # This file
 └── .gitignore           # Git ignore rules
 EOF
@@ -800,7 +733,7 @@ EOF
 ├── papers/           # Research papers
 ├── figures/          # Generated figures
 ├── results/          # Experiment results
-├── requirements.txt  # Project dependencies
+├── pyproject.toml    # Project configuration and dependencies
 ├── README.md         # This file
 └── .gitignore       # Git ignore rules
 EOF
@@ -841,9 +774,16 @@ result = hello()
 print(result)
 \`\`\`
 
-To install the library in development mode:
+The library is automatically installed in development mode by Poetry.
+
+To build the library:
 \`\`\`bash
-pip install -e .
+poetry build
+\`\`\`
+
+To publish to PyPI:
+\`\`\`bash
+poetry publish
 \`\`\`
 EOF
         ;;
@@ -880,47 +820,41 @@ To check types:
 mypy src/
 \`\`\`
 
-### 6. Managing the Environment
+### 6. Managing Dependencies with Poetry
 
-EOF
-
-if [ "$USE_CONDA" = true ]; then
-    cat <<EOF >> README.md
-To see all packages in the environment:
 \`\`\`bash
-conda list
+# Show all installed packages
+poetry show
+
+# Show dependency tree
+poetry show --tree
+
+# Update dependencies
+poetry update
+
+# Export dependencies to requirements.txt (if needed)
+poetry export -f requirements.txt -o requirements.txt
+
+# Build the project
+poetry build
+
+# Publish to PyPI (for library projects)
+poetry publish
 \`\`\`
 
-To export the environment:
-\`\`\`bash
-conda env export > environment.yml
-\`\`\`
+### 7. Poetry Virtual Environment
 
-To remove the environment (when no longer needed):
 \`\`\`bash
-conda deactivate
-conda env remove -n $PROJECT_NAME
-\`\`\`
-EOF
-else
-    cat <<EOF >> README.md
-To see all packages in the environment:
-\`\`\`bash
-pip list
-\`\`\`
+# Show info about the virtual environment
+poetry env info
 
-To export the environment:
-\`\`\`bash
-pip freeze > requirements-lock.txt
-\`\`\`
+# List all virtual environments
+poetry env list
 
-To remove the environment (when no longer needed):
-\`\`\`bash
-deactivate
-rm -rf venv
+# Remove the virtual environment
+poetry env remove python$PYTHON_VERSION
 \`\`\`
 EOF
-fi
 
 # Create a sample test file
 case $PROJECT_TYPE in
@@ -1003,17 +937,16 @@ echo "Python project '$PROJECT_NAME' created successfully at $python_dir/$PROJEC
 echo "Project type: $PROJECT_TYPE"
 echo ""
 echo "To start working on your project:"
-echo "  cd $python_dir/$PROJECT_NAME"
-
-if [ "$USE_CONDA" = true ]; then
-    echo "  conda activate $PROJECT_NAME"
+if [ "$IS_WINDOWS" = true ]; then
+    # Convert back to Windows path for display
+    win_path=$(cygpath -w "$python_dir/$PROJECT_NAME" 2>/dev/null || echo "$python_dir/$PROJECT_NAME")
+    echo "  cd $win_path"
 else
-    echo "  source venv/bin/activate  # On macOS/Linux"
-    echo "  # OR"
-    echo "  venv\\Scripts\\activate   # On Windows"
+    echo "  cd $python_dir/$PROJECT_NAME"
 fi
-
-echo "  pip install -r requirements.txt"
+echo "  poetry shell  # Activate the virtual environment"
+echo "  # OR"
+echo "  poetry install  # Install dependencies without activating shell"
 
 # Add project-type specific instructions
 case $PROJECT_TYPE in
@@ -1029,7 +962,9 @@ case $PROJECT_TYPE in
         ;;
     library)
         echo ""
-        echo "To install in development mode:"
-        echo "  pip install -e ."
+        echo "To build the library:"
+        echo "  poetry build"
+        echo "To publish to PyPI:"
+        echo "  poetry publish"
         ;;
 esac
