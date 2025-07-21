@@ -126,6 +126,80 @@ python_project --help
 - `--no-conda`: Use venv instead of conda
 - `--no-git`: Skip git initialization
 
+### 4. clone-git-project.sh
+Clones git repositories into language-specific directories with automatic language detection.
+
+**Features:**
+- Automatic language detection based on file extensions and config files
+- Support for multiple languages (Python, Go, JavaScript, Rust, Java, C/C++, Ruby, PHP, Swift)
+- Git clone options (branch, shallow, recursive)
+- Custom naming and language override
+- VS Code integration
+- Projects organized by language in ~/Documents/[Language]_projects/
+
+**Usage:**
+```bash
+# Basic clone with auto-detection
+clone https://github.com/user/repo.git
+
+# Clone specific branch
+clone -b develop https://github.com/user/repo.git
+
+# Shallow clone for faster download
+clone --shallow https://github.com/user/repo.git
+clone -d 10 https://github.com/user/repo.git  # depth of 10
+
+# Force language and custom name
+clone -l rust -n my-rust-app https://github.com/user/repo.git
+
+# Clone and open in VS Code
+clone -o https://github.com/user/repo.git
+
+# Clone with submodules
+clone -r https://github.com/user/repo.git
+
+# Quiet mode
+clone -q https://github.com/user/repo.git
+
+# Force replace existing repository
+clone -f https://github.com/user/repo.git
+
+# Combine multiple flags
+clone -b main -s -o -l python https://github.com/user/repo.git
+
+# Show help
+clone --help
+```
+
+**Options:**
+- `-b, --branch BRANCH`: Clone a specific branch
+- `-s, --shallow`: Shallow clone with depth=1
+- `-d, --depth N`: Shallow clone with custom depth
+- `-r, --recursive`: Clone submodules recursively
+- `-q, --quiet`: Suppress output
+- `-f, --force`: Skip confirmation when replacing existing repos
+- `-l, --lang LANGUAGE`: Override language detection (python, go, javascript/js, rust, java, c, ruby, php, swift, other)
+- `-n, --name NAME`: Use custom directory name
+- `-o, --open`: Open in VS Code after cloning
+
+**Language Detection:**
+The script detects languages by:
+1. Counting file extensions (.py, .go, .js, .rs, etc.)
+2. Looking for language-specific files (package.json, requirements.txt, go.mod, Cargo.toml, etc.)
+3. Choosing the most prevalent language
+
+**Directory Organization:**
+- Python → `~/Documents/Python_projects/`
+- Go → `~/Documents/Go_projects/`
+- JavaScript/TypeScript → `~/Documents/JavaScript_projects/`
+- Rust → `~/Documents/Rust_projects/`
+- Java → `~/Documents/Java_projects/`
+- C/C++ → `~/Documents/C_projects/`
+- Ruby → `~/Documents/Ruby_projects/`
+- PHP → `~/Documents/PHP_projects/`
+- Swift → `~/Documents/Swift_projects/`
+- Others → `~/Documents/Other_projects/`
+
 ## Installation
 
 ### macOS/Linux
@@ -140,6 +214,7 @@ mkdir ~/My_workenv
 chmod +x ~/My_workenv/create-go-project.sh
 chmod +x ~/My_workenv/create-nextjs-project.sh
 chmod +x ~/My_workenv/create-python-project.sh
+chmod +x ~/My_workenv/clone-git-project.sh
 ```
 
 3. Add aliases to your shell configuration file (~/.zshrc or ~/.bashrc):
@@ -147,6 +222,7 @@ chmod +x ~/My_workenv/create-python-project.sh
 alias go_project='~/My_workenv/create-go-project.sh'
 alias next='~/My_workenv/create-nextjs-project.sh'
 alias python_project='~/My_workenv/create-python-project.sh'
+alias clone='~/My_workenv/clone-git-project.sh'
 ```
 
 4. Reload your shell configuration:
@@ -202,6 +278,7 @@ All projects are organized in dedicated directories:
 - Go projects: `~/Documents/Go_projects/`
 - Next.js projects: `~/Documents/Next-js/`
 - Python projects: `~/Documents/Python_projects/`
+- Cloned repositories: Organized by detected language in `~/Documents/[Language]_projects/`
 
 ## Advanced Usage Examples
 
@@ -242,6 +319,24 @@ python_project analysis --type data
 
 # Create a Python library package
 python_project mypackage --type library
+```
+
+### Clone Projects
+```bash
+# Clone a Rust project with shallow depth
+clone -s https://github.com/rust-lang/rust.git
+
+# Clone a specific branch and open in VS Code
+clone -b feature/new-ui -o https://github.com/user/webapp.git
+
+# Clone with custom name to Python projects
+clone -l python -n ml-experiment https://github.com/scikit-learn/scikit-learn.git
+
+# Clone quietly with submodules
+clone -q -r https://github.com/user/complex-project.git
+
+# Force clone to replace existing
+clone -f https://github.com/user/myproject.git
 ```
 
 ## Features Common to All Scripts
